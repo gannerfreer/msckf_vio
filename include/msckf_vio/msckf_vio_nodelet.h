@@ -13,7 +13,9 @@
 #include <msckf_vio/msckf_vio.h>
 
 namespace msckf_vio {
-class MsckfVioNodelet : public nodelet::Nodelet {
+  // nodelet 需要继承自 nodelet::Nodelet 类
+  // nodelet不需要main函数，只用实现onInit函数即可
+class MsckfVioNodelet : public nodelet::Nodelet { 
 public:
   MsckfVioNodelet() { return; }
   ~MsckfVioNodelet() { return; }

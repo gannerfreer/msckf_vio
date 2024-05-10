@@ -28,6 +28,7 @@ struct IMUState {
   StateIDType id;
 
   // id for next IMU state
+  // 使用静态变量来记录下一个IMU状态的ID，创建时赋给id同时自加，保证每个IMU状态的ID都是唯一的
   static StateIDType next_id;
 
   // Time when the state is recorded
@@ -52,7 +53,7 @@ struct IMUState {
   Eigen::Vector3d acc_bias;
 
   // Transformation between the IMU and the
-  // left camera (cam0)
+  // left camera (cam0) 外参数
   Eigen::Matrix3d R_imu_cam0;
   Eigen::Vector3d t_cam0_imu;
 
@@ -61,11 +62,12 @@ struct IMUState {
   // `velocity`. There three variables are used to modify
   // the transition matrices to make the observability matrix
   // have proper null space.
+  // 下面三个向量用于修正0空间，但是似乎没有使用
   Eigen::Vector4d orientation_null;
   Eigen::Vector3d position_null;
   Eigen::Vector3d velocity_null;
 
-  // Process noise
+  // Process noise （各向同性假设）
   static double gyro_noise;
   static double acc_noise;
   static double gyro_bias_noise;

@@ -12,7 +12,7 @@
 #include <Eigen/Dense>
 
 namespace msckf_vio {
-
+// 为啥不跟util合并呢？
 /*
  *  @brief Create a skew-symmetric matrix from a 3-element vector.
  *  @note Performs the operation:
@@ -31,7 +31,7 @@ inline Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d& w) {
   w_hat(2, 0) = -w(1);
   w_hat(2, 1) = w(0);
   w_hat(2, 2) = 0;
-  return w_hat;
+  return w_hat;// 本地变量无需引用返回，编译器会优化
 }
 
 /*
@@ -44,7 +44,7 @@ inline void quaternionNormalize(Eigen::Vector4d& q) {
 }
 
 /*
- * @brief Perform q1 * q2
+ * @brief Perform q1 * q2 四元数乘法
  */
 inline Eigen::Vector4d quaternionMultiplication(
     const Eigen::Vector4d& q1,
@@ -68,6 +68,7 @@ inline Eigen::Vector4d quaternionMultiplication(
  *    For more details, check Section 3.2 "Kalman Filter Update" in
  *    "Indirect Kalman Filter for 3D Attitude Estimation:
  *    A Tutorial for quaternion Algebra".
+ * @note: 对于小角度旋转，可以
  */
 inline Eigen::Vector4d smallAngleQuaternion(
     const Eigen::Vector3d& dtheta) {

@@ -946,6 +946,7 @@ void ImageProcessor::integrateImuData(
 
   // Transform the mean angular velocity from the IMU
   // frame to the cam0 and cam1 frames.
+  // 为什么这里要用转置矩阵？
   Vec3f cam0_mean_ang_vel = R_cam0_imu.t() * mean_ang_vel;
   Vec3f cam1_mean_ang_vel = R_cam1_imu.t() * mean_ang_vel;
 
