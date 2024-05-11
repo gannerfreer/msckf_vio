@@ -1019,6 +1019,14 @@ void MsckfVio::measurementUpdate(
   return;
 }
 
+/**
+ * @brief : 使用卡方检验来进行门限测试
+ * @note : 仍在跟踪，似乎跟H矩阵更新有关，跟FEJ相关
+ * @param H : 测量矩阵
+ * @param r : 测量残差
+ * @param dof : 自由度
+ * @return {bool} : 是否通过测试
+ */
 bool MsckfVio::gatingTest(
     const MatrixXd& H, const VectorXd& r, const int& dof) {
 
