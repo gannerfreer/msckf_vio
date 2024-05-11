@@ -186,6 +186,7 @@ bool MsckfVio::createRosIO() {
 
   imu_sub = nh.subscribe("imu", 100,
       &MsckfVio::imuCallback, this);
+  // 订阅图像特征
   feature_sub = nh.subscribe("features", 40,
       &MsckfVio::featureCallback, this);
 

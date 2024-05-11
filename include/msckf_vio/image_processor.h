@@ -263,6 +263,18 @@ private:
       const double& inlier_error,
       const double& success_probability,
       std::vector<int>& inlier_markers);
+  
+  /**
+   * @brief : 点去畸变
+   * @param pts_in : 输入点
+   * @param intrinsics : 内参
+   * @param distortion_model : 畸变模型"radtan"（径向切向畸变模型）或"equidistant"（等距畸变模型）
+   * @param distortion_coeffs : 畸变系数
+   * @param pts_out : 输出点
+   * @param rectification_matrix : 矫正矩阵 默认单位阵 匹配cv没用
+   * @param new_intrinsics : 新内参 默认(1,1,0,0) 匹配cv没用
+   * @return {*}
+   */  
   void undistortPoints(
       const std::vector<cv::Point2f>& pts_in,
       const cv::Vec4d& intrinsics,
@@ -271,6 +283,10 @@ private:
       std::vector<cv::Point2f>& pts_out,
       const cv::Matx33d &rectification_matrix = cv::Matx33d::eye(),
       const cv::Vec4d &new_intrinsics = cv::Vec4d(1,1,0,0));
+  /**
+   * @brief : 点归一化
+   * @return {*}
+   */      
   void rescalePoints(
       std::vector<cv::Point2f>& pts1,
       std::vector<cv::Point2f>& pts2,

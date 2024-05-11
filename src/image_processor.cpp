@@ -181,11 +181,14 @@ bool ImageProcessor::createRosIO() {
       "tracking_info", 1);
   image_transport::ImageTransport it(nh);
   debug_stereo_pub = it.advertise("debug_stereo_image", 1);
-
+  
+  // 订阅图像话题 后续可以在launch中remap
   cam0_img_sub.subscribe(nh, "cam0_image", 10);
   cam1_img_sub.subscribe(nh, "cam1_image", 10);
+  // 绑定左右目消息，同步处理
   stereo_sub.connectInput(cam0_img_sub, cam1_img_sub);
   stereo_sub.registerCallback(&ImageProcessor::stereoCallback, this);
+  // 订阅imu话题 后续可以在launch中remap imu在前端仅仅用于简单积分
   imu_sub = nh.subscribe("imu", 50,
       &ImageProcessor::imuCallback, this);
 
@@ -238,26 +241,26 @@ void ImageProcessor::stereoCallback(
     // Track the feature in the previous image.
     ros::Time start_time = ros::Time::now();
     trackFeatures();
-    //ROS_INFO("Tracking time: %f",
-    //    (ros::Time::now()-start_time).toSec());
+    ROS_INFO("Tracking time: %f",
+       (ros::Time::now()-start_time).toSec());
 
     // Add new features into the current image.
     start_time = ros::Time::now();
     addNewFeatures();
-    //ROS_INFO("Addition time: %f",
-    //    (ros::Time::now()-start_time).toSec());
+    ROS_INFO("Addition time: %f",
+       (ros::Time::now()-start_time).toSec());
 
     // Add new features into the current image.
     start_time = ros::Time::now();
     pruneGridFeatures();
-    //ROS_INFO("Prune grid features: %f",
-    //    (ros::Time::now()-start_time).toSec());
+    ROS_INFO("Prune grid features: %f",
+       (ros::Time::now()-start_time).toSec());
 
     // Draw results.
     start_time = ros::Time::now();
     drawFeaturesStereo();
-    //ROS_INFO("Draw features: %f",
-    //    (ros::Time::now()-start_time).toSec());
+    ROS_INFO("Draw features: %f",
+       (ros::Time::now()-start_time).toSec());
   }
 
   //ros::Time start_time = ros::Time::now();
@@ -590,6 +593,7 @@ void ImageProcessor::trackFeatures() {
   for (const auto& item : *curr_features_ptr)
     curr_feature_num += item.second.size();
 
+  // 输出两点ransac的结果
   ROS_INFO_THROTTLE(0.5,
       "\033[0;32m candidates: %d; track: %d; match: %d; ransac: %d/%d=%f\033[0m",
       before_tracking, after_tracking, after_matching,
@@ -998,7 +1002,8 @@ void ImageProcessor::twoPointRansac(
   if (pts1.size() != pts2.size())
     ROS_ERROR("Sets of different size (%lu and %lu) are used...",
         pts1.size(), pts2.size());
-
+  
+  // 归一化参数
   double norm_pixel_unit = 2.0 / (intrinsics[0]+intrinsics[1]);
   int iter_num = static_cast<int>(
       ceil(log(1-success_probability) / log(1-0.7*0.7)));
@@ -1030,6 +1035,7 @@ void ImageProcessor::twoPointRansac(
   // Normalize the points to gain numerical stability.
   float scaling_factor = 0.0f;
   rescalePoints(pts1_undistorted, pts2_undistorted, scaling_factor);
+  // 归一化参数乘上计算的缩放因子
   norm_pixel_unit *= scaling_factor;
 
   // Compute the difference between previous and current points,
@@ -1049,7 +1055,7 @@ void ImageProcessor::twoPointRansac(
     // However, to be used with aggressive motion, this tolerance should
     // be increased significantly to match the usage.
     if (distance > 50.0*norm_pixel_unit) {
-      inlier_markers[i] = 0;
+      inlier_markers[i] = 0; // 设为外点
     } else {
       mean_pt_distance += distance;
       ++raw_inlier_cntr;
@@ -1061,7 +1067,7 @@ void ImageProcessor::twoPointRansac(
   // all input as outliers. This case can happen with fast
   // rotation where very few features are tracked.
   if (raw_inlier_cntr < 3) {
-    for (auto& marker : inlier_markers) marker = 0;
+    for (auto& marker : inlier_markers) marker = 0;// 通通设为外点
     return;
   }
 
@@ -1077,7 +1083,7 @@ void ImageProcessor::twoPointRansac(
       if (inlier_markers[i] == 0) continue;
       if (sqrt(pts_diff[i].dot(pts_diff[i])) >
           inlier_error*norm_pixel_unit)
-        inlier_markers[i] = 0;
+        inlier_markers[i] = 0; // 设为外点
     }
     return;
   }
@@ -1217,7 +1223,7 @@ void ImageProcessor::twoPointRansac(
       best_inlier_set = inlier_set;
     }
   }
-
+  // 最后只输出inline的标记，所以后面会发现有些操作重复做了，例如去畸变
   // Fill in the markers.
   inlier_markers.clear();
   inlier_markers.resize(pts1.size(), 0);
@@ -1234,6 +1240,7 @@ void ImageProcessor::publish() {
 
   // Publish features.
   CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
+  // 使用cam0的时间戳，如果前置处理时间长于1帧，时间戳会出错
   feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
 
   vector<FeatureIDType> curr_ids(0);
@@ -1251,6 +1258,7 @@ void ImageProcessor::publish() {
   vector<Point2f> curr_cam0_points_undistorted(0);
   vector<Point2f> curr_cam1_points_undistorted(0);
 
+  // Quest：这都到publish才去畸变吗？前面也去过很多次了
   undistortPoints(
       curr_cam0_points, cam0_intrinsics, cam0_distortion_model,
       cam0_distortion_coeffs, curr_cam0_points_undistorted);
@@ -1258,6 +1266,7 @@ void ImageProcessor::publish() {
       curr_cam1_points, cam1_intrinsics, cam1_distortion_model,
       cam1_distortion_coeffs, curr_cam1_points_undistorted);
 
+  // 输出平面点
   for (int i = 0; i < curr_ids.size(); ++i) {
     feature_msg_ptr->features.push_back(FeatureMeasurement());
     feature_msg_ptr->features[i].id = curr_ids[i];
@@ -1269,7 +1278,7 @@ void ImageProcessor::publish() {
 
   feature_pub.publish(feature_msg_ptr);
 
-  // Publish tracking info.
+  // Publish tracking info.输出点数和匹配数
   TrackingInfoPtr tracking_info_msg_ptr(new TrackingInfo());
   tracking_info_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
   tracking_info_msg_ptr->before_tracking = before_tracking;
