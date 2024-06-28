@@ -8,24 +8,24 @@
 #ifndef MSCKF_VIO_H
 #define MSCKF_VIO_H
 
-#include <map>
-#include <set>
-#include <vector>
-#include <string>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <boost/shared_ptr.hpp>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
+#include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
-#include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
 #include <std_srvs/Trigger.h>
+#include <tf/transform_broadcaster.h>
 
-#include "imu_state.h"
+#include <msckf_vio/CameraMeasurement.h>
 #include "cam_state.h"
 #include "feature.hpp"
-#include <msckf_vio/CameraMeasurement.h>
+#include "imu_state.h"
 
 namespace msckf_vio {
 /*
@@ -36,20 +36,21 @@ namespace msckf_vio {
  *    http://www.ee.ucr.edu/~mourikis/tech_reports/TR_MSCKF.pdf
  */
 class MsckfVio {
-  public:
+   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // Constructor
-    MsckfVio(ros::NodeHandle& pnh);
+    MsckfVio(ros::NodeHandle &pnh);
     // Disable copy and assign constructor
-    MsckfVio(const MsckfVio&) = delete;
-    MsckfVio operator=(const MsckfVio&) = delete;
+    MsckfVio(const MsckfVio &) = delete;
+    MsckfVio operator=(const MsckfVio &) = delete;
 
     // Destructor
     ~MsckfVio() {}
 
     /*
      * @brief initialize Initialize the VIO.
+     * @note: 负责loadParameters和createRosIO 以及初始化state_server
      */
     bool initialize();
 
@@ -61,21 +62,20 @@ class MsckfVio {
     typedef boost::shared_ptr<MsckfVio> Ptr;
     typedef boost::shared_ptr<const MsckfVio> ConstPtr;
 
-  private:
+   private:
     /*
      * @brief StateServer Store one IMU states and several
      *    camera states for constructing measurement
      *    model.
      */
     struct StateServer {
-      IMUState imu_state;
-      CamStateServer cam_states;
+        IMUState imu_state;
+        CamStateServer cam_states;
 
-      // State covariance matrix
-      Eigen::MatrixXd state_cov;
-      Eigen::Matrix<double, 12, 12> continuous_noise_cov;
+        // State covariance matrix
+        Eigen::MatrixXd state_cov;
+        Eigen::Matrix<double, 12, 12> continuous_noise_cov;
     };
-
 
     /*
      * @brief loadParameters
@@ -94,20 +94,20 @@ class MsckfVio {
      *    Callback function for the imu message.
      * @param msg IMU msg.
      */
-    void imuCallback(const sensor_msgs::ImuConstPtr& msg);
+    void imuCallback(const sensor_msgs::ImuConstPtr &msg);
 
     /*
      * @brief featureCallback
      *    Callback function for feature measurements.
      * @param msg Stereo feature measurements.
      */
-    void featureCallback(const CameraMeasurementConstPtr& msg);
+    void featureCallback(const CameraMeasurementConstPtr &msg);
 
     /*
      * @brief publish Publish the results of VIO.
      * @param time The time stamp of output msgs.
      */
-    void publish(const ros::Time& time);
+    void publish(const ros::Time &time);
 
     /*
      * @brief initializegravityAndBias
@@ -123,42 +123,32 @@ class MsckfVio {
      *    only be called before the sensor suite starts moving.
      *    e.g. while the robot is still on the ground.
      */
-    bool resetCallback(std_srvs::Trigger::Request& req,
-        std_srvs::Trigger::Response& res);
+    bool resetCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
 
     // Filter related functions
     // Propogate the state
-    void batchImuProcessing(
-        const double& time_bound);
-    void processModel(const double& time,
-        const Eigen::Vector3d& m_gyro,
-        const Eigen::Vector3d& m_acc);
-    void predictNewState(const double& dt,
-        const Eigen::Vector3d& gyro,
-        const Eigen::Vector3d& acc);
+    void batchImuProcessing(const double &time_bound);
+    void processModel(const double &time, const Eigen::Vector3d &m_gyro,
+                      const Eigen::Vector3d &m_acc);
+    void predictNewState(const double &dt, const Eigen::Vector3d &gyro, const Eigen::Vector3d &acc);
 
     // Measurement update
-    void stateAugmentation(const double& time);
-    void addFeatureObservations(const CameraMeasurementConstPtr& msg);
+    void stateAugmentation(const double &time);
+    void addFeatureObservations(const CameraMeasurementConstPtr &msg);
     // This function is used to compute the measurement Jacobian
     // for a single feature observed at a single camera frame.
-    void measurementJacobian(const StateIDType& cam_state_id,
-        const FeatureIDType& feature_id,
-        Eigen::Matrix<double, 4, 6>& H_x,
-        Eigen::Matrix<double, 4, 3>& H_f,
-        Eigen::Vector4d& r);
+    void measurementJacobian(const StateIDType &cam_state_id, const FeatureIDType &feature_id,
+                             Eigen::Matrix<double, 4, 6> &H_x, Eigen::Matrix<double, 4, 3> &H_f,
+                             Eigen::Vector4d &r);
     // This function computes the Jacobian of all measurements viewed
     // in the given camera states of this feature.
-    void featureJacobian(const FeatureIDType& feature_id,
-        const std::vector<StateIDType>& cam_state_ids,
-        Eigen::MatrixXd& H_x, Eigen::VectorXd& r);
-    void measurementUpdate(const Eigen::MatrixXd& H,
-        const Eigen::VectorXd& r);
-    bool gatingTest(const Eigen::MatrixXd& H,
-        const Eigen::VectorXd&r, const int& dof);
+    void featureJacobian(const FeatureIDType &feature_id,
+                         const std::vector<StateIDType> &cam_state_ids, Eigen::MatrixXd &H_x,
+                         Eigen::VectorXd &r);
+    void measurementUpdate(const Eigen::MatrixXd &H, const Eigen::VectorXd &r);
+    bool gatingTest(const Eigen::MatrixXd &H, const Eigen::VectorXd &r, const int &dof);
     void removeLostFeatures();
-    void findRedundantCamStates(
-        std::vector<StateIDType>& rm_cam_state_ids);
+    void findRedundantCamStates(std::vector<StateIDType> &rm_cam_state_ids);
     void pruneCamStateBuffer();
     // Reset the system online if the uncertainty is too large.
     void onlineReset();
@@ -225,8 +215,7 @@ class MsckfVio {
     double frame_rate;
 
     // Debugging variables and functions
-    void mocapOdomCallback(
-        const nav_msgs::OdometryConstPtr& msg);
+    void mocapOdomCallback(const nav_msgs::OdometryConstPtr &msg);
 
     ros::Subscriber mocap_odom_sub;
     ros::Publisher mocap_odom_pub;
@@ -237,6 +226,6 @@ class MsckfVio {
 typedef MsckfVio::Ptr MsckfVioPtr;
 typedef MsckfVio::ConstPtr MsckfVioConstPtr;
 
-} // namespace msckf_vio
+}  // namespace msckf_vio
 
 #endif

@@ -8,23 +8,22 @@
 #ifndef MSCKF_VIO_NODELET_H
 #define MSCKF_VIO_NODELET_H
 
+#include <msckf_vio/msckf_vio.h>
 #include <nodelet/nodelet.h>
 #include <pluginlib/class_list_macros.h>
-#include <msckf_vio/msckf_vio.h>
 
 namespace msckf_vio {
-  // nodelet 需要继承自 nodelet::Nodelet 类
-  // nodelet不需要main函数，只用实现onInit函数即可
-class MsckfVioNodelet : public nodelet::Nodelet { 
-public:
-  MsckfVioNodelet() { return; }
-  ~MsckfVioNodelet() { return; }
+// nodelet 需要继承自 nodelet::Nodelet 类
+// nodelet不需要main函数，只用实现onInit函数即可
+class MsckfVioNodelet : public nodelet::Nodelet {
+   public:
+    MsckfVioNodelet() { return; }
+    ~MsckfVioNodelet() { return; }
 
-private:
-  virtual void onInit();
-  MsckfVioPtr msckf_vio_ptr;
+   private:
+    virtual void onInit();
+    MsckfVioPtr msckf_vio_ptr;
 };
-} // end namespace msckf_vio
+}  // end namespace msckf_vio
 
 #endif
-
