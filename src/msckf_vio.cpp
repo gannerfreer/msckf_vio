@@ -202,6 +202,11 @@ bool MsckfVio::initialize() {
     return true;
 }
 
+/**
+ * @brief : imu回调,同时负责静态初始化
+ * @param {ImuConstPtr} &msg
+ * @return {*}
+ */
 void MsckfVio::imuCallback(const sensor_msgs::ImuConstPtr &msg) {
     // IMU msgs are pushed backed into a buffer instead of
     // being processed immediately. The IMU msgs are processed
@@ -209,6 +214,7 @@ void MsckfVio::imuCallback(const sensor_msgs::ImuConstPtr &msg) {
     // easily handle the transfer delay.
     imu_msg_buffer.push_back(*msg);
 
+    // 前200帧需要静止完成初始化
     if (!is_gravity_set) {
         if (imu_msg_buffer.size() < 200)
             return;
